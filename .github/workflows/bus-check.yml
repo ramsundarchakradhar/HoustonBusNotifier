@@ -1,0 +1,36 @@
+name: Bus Check
+
+on:
+  schedule:
+    - cron: "*/5 21-22 * * 1-5"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  check-bus:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install gtfs-realtime-bindings requests
+
+      - name: Run bus check
+        env:
+          METRO_API_KEY: ${{ secrets.METRO_API_KEY }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: python bus_check.py
+
+      - name: Commit updated state
+        run: |
+          git config user.name "bus-notifier-bot"
+          git config user.email "actions@github.com"
+          git add state.json
+          git diff --staged --quiet || git commit -m "Update notification state"
+          git push
